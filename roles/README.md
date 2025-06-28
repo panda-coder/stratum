@@ -49,11 +49,97 @@ graph TB
 
 | Role | Purpose | Upstream Protocol | Downstream Protocol | Default Port |
 |------|---------|------------------|-------------------|--------------|
-| **Job Declaration Server** | Manages job declarations and mempool | Bitcoin Core RPC | Job Declaration Protocol | 34264 |
+| **Job Declaration Server** | Manages job declarations, mempool, and block submission | Bitcoin Core RPC | Job Declaration Protocol | 34264 |
 | **Job Declaration Client** | Declares custom jobs and distributes work | Template + Job Declaration | Job Distribution Protocol | Configurable |
 | **SRI Pool** | Central mining coordination | Template Distribution | Mining Protocol | Configurable |
 | **Mining Proxy** | Mining device aggregation | Mining Protocol | Mining Protocol | Configurable |
 | **Translator Proxy** | SV1 to SV2 protocol bridge | Mining Protocol | Stratum V1 | Configurable |
+
+## Individual Role Descriptions
+
+### Job Declaration Server (JDS)
+The Job Declaration Server is a critical component that manages job declarations from Job Declaration Clients and maintains a local mempool synchronized with Bitcoin Core. It serves as the bridge between custom mining operations and the Bitcoin network.
+
+**Key Responsibilities:**
+- **Job Declaration Management**: Validates and processes job declarations from JDCs
+- **Mempool Synchronization**: Maintains a local cache of Bitcoin transactions via RPC calls
+- **Block Submission**: Forwards valid blocks to Bitcoin Core using `submitblock` RPC
+- **Protocol Handling**: Implements the Job Declaration Protocol for secure communication
+
+**Network Configuration:**
+- **Downstream Port**: 34264 (Job Declaration Protocol)
+- **Upstream**: Bitcoin Core RPC (port 8332/48332)
+- **Encryption**: Noise Protocol for JDC connections, optional TLS for RPC
+
+### Job Declaration Client (JDC)
+The Job Declaration Client enables miners to use custom block templates while participating in mining pools. It acts as an intermediary between Template Providers, Job Declaration Servers, and downstream mining infrastructure.
+
+**Key Responsibilities:**
+- **Template Management**: Receives and processes custom block templates from Template Providers
+- **Job Declaration**: Declares template usage with Job Declaration Servers
+- **Job Distribution**: Distributes mining jobs to downstream Mining Proxies
+- **Channel Relay**: Transparently relays extended channel requests to upstream services
+
+**Network Configuration:**
+- **Upstream**: Template Provider (Template Distribution Protocol), JDS (Job Declaration Protocol)
+- **Downstream**: Mining Proxies (Job Distribution Protocol)
+- **Encryption**: Noise Protocol for all SV2 connections
+
+### SRI Pool
+The SRI Pool serves as the central mining coordination point, managing mining jobs, processing share submissions, and coordinating with Template Providers for efficient mining operations.
+
+**Key Responsibilities:**
+- **Job Management**: Creates and distributes mining jobs from templates
+- **Share Processing**: Validates and processes share submissions from miners
+- **Channel Management**: Handles both standard and extended mining channels
+- **Payout Management**: Manages coinbase outputs and reward distribution
+
+**Network Configuration:**
+- **Upstream**: Template Provider (Template Distribution Protocol)
+- **Downstream**: Mining Proxies, Translator Proxies (Mining Protocol)
+- **Encryption**: Noise Protocol for all client connections
+
+### Mining Proxy
+The Mining Proxy aggregates multiple mining devices and provides intelligent upstream connection management with support for different channel types and operational modes.
+
+**Key Responsibilities:**
+- **Device Aggregation**: Manages connections from multiple mining devices
+- **Channel Management**: Supports Group, Extended, and ExtendedWithDeclarator modes
+- **Protocol Translation**: Converts between standard and extended channel protocols
+- **Load Balancing**: Distributes work efficiently across connected devices
+
+**Network Configuration:**
+- **Upstream**: SRI Pool, JDC (depending on mode)
+- **Downstream**: Mining devices (Mining Protocol)
+- **Encryption**: Noise Protocol for all SV2 connections
+
+### Translator Proxy
+The Translator Proxy provides backward compatibility by bridging Stratum V1 mining devices with Stratum V2 infrastructure, enabling gradual migration to SV2.
+
+**Key Responsibilities:**
+- **Protocol Translation**: Converts between Stratum V1 and V2 protocols
+- **Legacy Support**: Enables existing SV1 hardware to work with SV2 pools
+- **Message Mapping**: Translates message types and formats between protocol versions
+- **Authentication Bridge**: Handles different authentication mechanisms
+
+**Network Configuration:**
+- **Upstream**: SRI Pool (Mining Protocol SV2)
+- **Downstream**: SV1 Mining devices (Stratum V1 Protocol)
+- **Encryption**: Noise Protocol upstream, plain TCP downstream
+
+### Template Provider
+The Template Provider connects to Bitcoin Core and distributes block templates to pools and Job Declaration Clients, serving as the source of mining work.
+
+**Key Responsibilities:**
+- **Template Generation**: Creates block templates from Bitcoin Core
+- **Template Distribution**: Distributes templates to pools and JDCs
+- **Chain Monitoring**: Monitors blockchain for new blocks and updates
+- **Transaction Management**: Provides transaction data for template construction
+
+**Network Configuration:**
+- **Upstream**: Bitcoin Core RPC (port 8332/48332)
+- **Downstream**: SRI Pool, JDC (Template Distribution Protocol)
+- **Encryption**: Optional Noise Protocol for template distribution
 
 ## Detailed Role Interactions
 
